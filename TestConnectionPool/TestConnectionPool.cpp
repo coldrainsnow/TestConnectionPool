@@ -77,6 +77,7 @@ bool ConnectionPool::loadConfigFile()
 	return true;
 }
 
+// 连接池的构造
 ConnectionPool::ConnectionPool()
 {
 	// 加载配置项
@@ -93,6 +94,33 @@ ConnectionPool::ConnectionPool()
 		_connectionQue.push(p);
 		_connectionCnt++;
 	}
+
+	// 启动一个新的进程，作为连接的生产者 linux thread底层其实调用的是pthread_create
+	// this是绑定当前的对象，给这个成员方法绑定当前的对象，要不然这个成员方法是没办法直接作为线程函数的，因为线程函数都是C接口
+	thread produce(std::bind(&ConnectionPool::produceConnectionTask, this));
 }
 
- 
+// 运行在独立的线程中，专门负责生产新连接
+void ConnectionPool::produceConnectionTask()
+{
+	for (;;)
+	{
+		unique_lock<mutex> lock(_queueMutex);
+		while (!_connectionQue.empty())
+		{
+			cv.wait(lock); // 队列不空，此处生产线程进入等待状态
+		}
+
+		// 连接数量没有到达上限，继续创建新的连接
+		if (_connectionCnt < _maxIdleTime)
+		{
+			Connection* p = new Connection();
+			p->connect(_ip, _port, _username, _password, _dbname);
+			_connectionQue.push(p);
+			_connectionCnt++;
+		}
+
+		// 通知消费者线程，可以消费连接了
+		cv.notify_all();
+	}
+}

@@ -1,3 +1,7 @@
-﻿  main.cpp
-F:\github\TestConnectionPool\TestConnectionPool\main.cpp(9,5): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+﻿  TestConnectionPool.cpp
+F:\github\TestConnectionPool\TestConnectionPool\TestConnectionPool.cpp(29,29): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+F:\github\TestConnectionPool\TestConnectionPool\TestConnectionPool.cpp(36,35): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+F:\github\TestConnectionPool\TestConnectionPool\TestConnectionPool.cpp(17,13): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  main.cpp
+  正在生成代码...
   TestConnectionPool.vcxproj -> F:\github\TestConnectionPool\x64\Debug\TestConnectionPool.exe
