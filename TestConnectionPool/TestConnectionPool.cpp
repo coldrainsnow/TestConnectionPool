@@ -1,14 +1,98 @@
-﻿// TestConnectionPool.cpp : 此文件包含 "main" 函数。程序执行将在此处开始并结束。
-//
+﻿#include "TestConnectionPool.h"
+#include <iostream>
+#include "public.h"
+#include <thread>
+using namespace std;
 
+// 线程安全的懒汉单例函数接口
+ConnectionPool* ConnectionPool::getConnectionPool()
+{
+	// 对于静态变量的初始化，编译器自动lock和unlock
+	static ConnectionPool pool;
+	return &pool;
+}
 
-// 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
-// 调试程序: F5 或调试 >“开始调试”菜单
+bool ConnectionPool::loadConfigFile()
+{
+	FILE* pf = fopen("mysql.ini", "r");
+	if (pf == nullptr) 
+	{
+		LOG("mysql.ini file is not exist!");
+		return false;
+	}
 
-// 入门使用技巧: 
-//   1. 使用解决方案资源管理器窗口添加/管理文件
-//   2. 使用团队资源管理器窗口连接到源代码管理
-//   3. 使用输出窗口查看生成输出和其他消息
-//   4. 使用错误列表窗口查看错误
-//   5. 转到“项目”>“添加新项”以创建新的代码文件，或转到“项目”>“添加现有项”以将现有代码文件添加到项目
-//   6. 将来，若要再次打开此项目，请转到“文件”>“打开”>“项目”并选择 .sln 文件
+	while (!feof(pf))
+	{
+		char line[1024] = { 0 };
+		fgets(line, 1024, pf);
+		string str = line;
+		int idx = str.find("=", 0);
+		if (idx == -1)
+		{
+			continue;
+		}
+		
+		// password=123456\n
+		int endidx = str.find('\n', idx);
+		string key = str.substr(0, idx);
+		string value = str.substr(idx + 1, endidx - idx - 1);
+
+		if (key == "ip")
+		{
+			_ip = value;
+		}
+		else if (key == "port")
+		{
+			_port = atoi(value.c_str());
+		}
+		else if (key == "username")
+		{
+			_username = value;
+		}
+		else if (key == "password")
+		{
+			_password = value;
+		}
+		else if (key == "dbname")
+		{
+			_dbname = value;
+		}
+		else if (key == "initSize")
+		{
+			_initSize = atoi(value.c_str());
+		}
+		else if (key == "maxSize")
+		{
+			_maxSize = atoi(value.c_str());
+		}
+		else if (key == "maxIdleTime")
+		{
+			_maxIdleTime = atoi(value.c_str());
+		}
+		else if (key == "connectionTimeOut")
+		{
+			_connectionTimeout = atoi(value.c_str());
+		}
+	}
+	return true;
+}
+
+ConnectionPool::ConnectionPool()
+{
+	// 加载配置项
+	if (!loadConfigFile())
+	{
+		return;
+	}
+
+	// 创建初始数量的连接
+	for (int i = 0; i < _initSize; ++i)
+	{
+		Connection* p = new Connection();
+		p->connect(_ip, _port, _username, _password, _dbname);
+		_connectionQue.push(p);
+		_connectionCnt++;
+	}
+}
+
+ 
