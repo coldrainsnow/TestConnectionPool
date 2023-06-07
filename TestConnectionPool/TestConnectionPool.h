@@ -28,6 +28,9 @@ public:
 	// 运行在独立的线程中，专门负责生产新连接
 	void produceConnectionTask();
 
+	// 启动一个新的定时线程，扫描超过maxIdleTime时间的空闲连接，进行多余的连接回收
+	void scannerConnectionTask();
+
 	string _ip;	// mysql的ip地址
 	unsigned short _port;// mysql的端口号3306
 	string _username;// mysql的登录用户名
