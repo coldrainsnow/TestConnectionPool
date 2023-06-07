@@ -124,3 +124,40 @@ void ConnectionPool::produceConnectionTask()
 		cv.notify_all();
 	}
 }
+
+// 给外部提供接口，从连接池中获取一个可用的空闲连接
+shared_ptr<Connection> ConnectionPool::getConnection()
+{
+	unique_lock<mutex> lock(_queueMutex);
+	while (_connectionQue.empty())
+	{
+		// sleep 这里可以看下wait_for里面的sv_status
+		if (cv_status::timeout == cv.wait_for(lock, chrono::milliseconds(_connectionTimeout)))
+		{
+			// 如果醒来还是空的
+			if (_connectionQue.empty())
+			{
+				LOG("获取空闲连接超时了...获取连接失败!");
+				return nullptr;
+			}
+		}
+	}
+
+	/*
+	shared_ptr智能指针析构时，会把connection资源直接delete掉，相当于
+	调用connection的析构函数，connection就被close掉了
+	这里需要自定义shared_ptr的释放资源的方式，把connection直接归还到queue当中
+	*/
+
+	shared_ptr<Connection> sp(_connectionQue.front(),
+		[&](Connection* pcon) {
+			// 这里是在服务器应用线程中调用的，所以一定要考虑队列的线程安全操作
+			unique_lock<mutex> lock(_queueMutex);
+			_connectionQue.push(pcon);
+		});
+	_connectionQue.pop();
+	cv.notify_all();	// 消费完连接以后，通知生产者线程检查一下，如果队列为空了，赶紧生产连接，说明现在并发量比较大
+	return sp;
+
+
+}
